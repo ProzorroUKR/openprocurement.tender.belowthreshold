@@ -723,6 +723,18 @@ def create_tender(self):
                      [additional_classification_0, additional_classification_1])
 
 
+def tender_milestones(self):
+    tender_data = deepcopy(self.initial_data)
+    tender_data['milestones'] = deepcopy(self.initial_milestones)
+    response = self.app.post_json('/tenders', {'data': tender_data})
+    self.assertEqual(response.status, '201 Created')
+    self.assertEqual(response.content_type, 'application/json')
+    self.assertIn('milestones', response.json['data'])
+    milestones = response.json['data']["milestones"]
+    self.assertEqual(len(milestones), len(self.initial_milestones))
+    self.assertEqual(set(milestones[0].keys()), set(self.initial_milestones[0].keys()) | {'id'})
+
+
 def tender_funders(self):
     tender_data = deepcopy(self.initial_data)
     tender_data['funders'] = [deepcopy(test_organization)]
@@ -1152,6 +1164,66 @@ def patch_tender(self):
     self.db.save(tender_data)
 
     response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], owner_token), {'data': {'status': 'active.auction'}}, status=403)
+    self.assertEqual(response.status, '403 Forbidden')
+    self.assertEqual(response.content_type, 'application/json')
+    self.assertEqual(response.json['errors'][0]["description"], "Can't update tender in current (complete) status")
+
+
+def patch_tender_milestones(self):
+    data = self.initial_data.copy()
+    milestones = deepcopy(self.initial_milestones)
+    data["milestones"] = milestones
+    response = self.app.post_json('/tenders', {'data': data})
+    self.assertEqual(response.status, '201 Created')
+
+    tender = response.json['data']
+    owner_token = response.json['access']['token']
+
+    milestones[1]["percentage"] = milestones[1]["percentage"] - 10
+    milestones.append(
+        {
+            'code': 'executionOfWorks',
+            'type': 'financing',
+            'duration': {'days': 31, 'type': 'banking'},
+            'sub_type': 'postpayment',
+            'percentage': 10,
+        }
+    )
+    response = self.app.patch_json(
+        '/tenders/{}?acc_token={}'.format(tender['id'], owner_token),
+        {'data': {
+            'milestones': milestones
+        }}
+    )
+    self.assertEqual(response.status, '200 OK')
+    self.assertEqual(response.content_type, 'application/json')
+    resp_milestones = response.json["data"]["milestones"]
+    self.assertEqual(len(resp_milestones), len(self.initial_milestones) + 1)
+    self.assertEqual(resp_milestones[1]["percentage"], milestones[1]["percentage"])
+
+    tender_data = self.db.get(tender['id'])
+    tender_data['status'] = 'active.tendering'
+    self.db.save(tender_data)
+
+    milestones[2]["sub_type"] = "prepayment"
+    response = self.app.patch_json(
+        '/tenders/{}?acc_token={}'.format(tender['id'], owner_token),
+        {'data': {'milestones': milestones}},
+        # status=403
+    )
+    resp_milestones = response.json["data"]["milestones"]
+    self.assertNotEqual(resp_milestones[2]["sub_type"], milestones[2]["sub_type"])
+    self.assertEqual(resp_milestones[2]["sub_type"], "postpayment")
+
+    tender_data = self.db.get(tender['id'])
+    tender_data['status'] = 'complete'
+    self.db.save(tender_data)
+
+    response = self.app.patch_json(
+        '/tenders/{}?acc_token={}'.format(tender['id'], owner_token),
+        {'data': {'milestones': milestones}},
+        status=403
+    )
     self.assertEqual(response.status, '403 Forbidden')
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['errors'][0]["description"], "Can't update tender in current (complete) status")

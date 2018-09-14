@@ -192,10 +192,27 @@ test_features = [
         ]
     }
 ]
+test_milestones = [
+    {
+        'code': 'signingTheContract',
+        'type': 'financing',
+        'duration': {'days': 7, 'type': 'banking'},
+        'sub_type': 'prepayment',
+        'percentage': 10,
+    },
+    {
+        'code': 'executionOfWorks',
+        'type': 'financing',
+        'duration': {'days': 14, 'type': 'banking'},
+        'sub_type': 'postpayment',
+        'percentage': 90,
+    }
+]
 
 
 class BaseTenderWebTest(BaseTWT):
     initial_data = test_tender_data
+    initial_milestones = test_milestones
     initial_status = None
     initial_bids = None
     initial_lots = None

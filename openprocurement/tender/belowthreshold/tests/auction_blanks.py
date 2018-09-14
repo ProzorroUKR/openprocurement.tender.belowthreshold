@@ -755,6 +755,8 @@ def post_tender_lots_auction(self):
 
 
 def patch_tender_lots_auction(self):
+    tender_data = self.db.get(self.tender_id)
+
     self.app.authorization = ('Basic', ('auction', ''))
     response = self.app.patch_json('/tenders/{}/auction'.format(self.tender_id), {'data': {}}, status=403)
     self.assertEqual(response.status, '403 Forbidden')
@@ -810,7 +812,6 @@ def patch_tender_lots_auction(self):
             "auctionUrl": patch_data.pop('auctionUrl')
         }
     ]
-
     response = self.app.patch_json('/tenders/{}/auction'.format(self.tender_id), {'data': patch_data}, status=422)
     self.assertEqual(response.status, '422 Unprocessable Entity')
     self.assertEqual(response.content_type, 'application/json')

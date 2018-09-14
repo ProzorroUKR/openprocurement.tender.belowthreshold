@@ -114,7 +114,7 @@ class TenderMultipleLotAuctionResourceTest(TenderContentWebTest, TenderMultipleL
     initial_bids = deepcopy(test_bids)
     initial_auth = ('Basic', ('broker', ''))
 
-    test_patch_tender_auction = snitch(patch_tender_lots_auction)
+    test_patch_tender_lots_auction = snitch(patch_tender_lots_auction)
 
 
 class TenderFeaturesAuctionResourceTest(TenderContentWebTest):

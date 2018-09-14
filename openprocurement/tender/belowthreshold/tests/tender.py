@@ -5,7 +5,7 @@ import unittest
 from openprocurement.api.tests.base import BaseWebTest, snitch
 
 from openprocurement.tender.belowthreshold.tests.base import (
-    test_tender_data, BaseTenderWebTest
+    test_tender_data, BaseTenderWebTest, test_milestones
 )
 from openprocurement.tender.belowthreshold.tests.tender_blanks import (
     # TenderResourceTest
@@ -26,7 +26,9 @@ from openprocurement.tender.belowthreshold.tests.tender_blanks import (
     tender_features,
     patch_tender_jsonpatch,
     patch_tender,
+    patch_tender_milestones,
     required_field_deletion,
+    tender_milestones,
     tender_funders,
     # TenderProcessTest
     one_valid_bid_tender,
@@ -55,6 +57,8 @@ class TenderResourceTestMixin(object):
     test_tender_not_found = snitch(tender_not_found)
     test_tender_Administrator_change = snitch(tender_Administrator_change)
     test_patch_not_author = snitch(patch_not_author)
+    test_tender_milestones = snitch(tender_milestones)
+    test_patch_tender_milestones = snitch(patch_tender_milestones)
     test_tender_funders = snitch(tender_funders)
 
 
