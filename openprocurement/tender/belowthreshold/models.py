@@ -277,7 +277,7 @@ class Tender(BaseTender):
                             u"Item with classification.id=336000000-6 have no additionalClassifications fields")
                     else:
                         schemes = [x.scheme for x in item.additionalClassifications]
-                        if schemes.count('INN') != 1:
+                        if schemes.count('INN') < 1:
                             raise ValidationError(u"Item with classification.id=336000000-6 have to contain exactly one \
 additionalClassifications with scheme=INN")
 
