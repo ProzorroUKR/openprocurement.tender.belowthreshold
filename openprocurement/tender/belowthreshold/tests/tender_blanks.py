@@ -127,8 +127,8 @@ def listing(self):
     response = self.app.get('/tenders', params=[('opt_fields', 'status,enquiryPeriod')])
     self.assertEqual(response.status, '200 OK')
     self.assertEqual(len(response.json['data']), 3)
-    self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified', u'status', u'enquiryPeriod']))
-    self.assertIn('opt_fields=status%2CenquiryPeriod', response.json['next_page']['uri'])
+    self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified', u'status']))
+    self.assertIn('opt_fields=status', response.json['next_page']['uri'])
 
     response = self.app.get('/tenders?descending=1')
     self.assertEqual(response.status, '200 OK')
@@ -224,8 +224,8 @@ def listing_changes(self):
     response = self.app.get('/tenders?feed=changes', params=[('opt_fields', 'status,enquiryPeriod')])
     self.assertEqual(response.status, '200 OK')
     self.assertEqual(len(response.json['data']), 3)
-    self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified', u'status', u'enquiryPeriod']))
-    self.assertIn('opt_fields=status%2CenquiryPeriod', response.json['next_page']['uri'])
+    self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified', u'status']))
+    self.assertIn('opt_fields=status', response.json['next_page']['uri'])
 
     response = self.app.get('/tenders?feed=changes&descending=1')
     self.assertEqual(response.status, '200 OK')
@@ -1712,3 +1712,45 @@ def lost_contract_for_active_award(self):
     self.app.authorization = ('Basic', ('broker', ''))
     response = self.app.get('/tenders/{}'.format(tender_id))
     self.assertEqual(response.json['data']['status'], 'complete')
+
+
+def tender_with_main_procurement_category(self):
+    data = dict(**self.initial_data)
+
+    # test fail creation
+    data["mainProcurementCategory"] = "whiskey,tango,foxtrot"
+    response = self.app.post_json('/tenders', {'data': data}, status=422)
+    self.assertEqual(
+        response.json['errors'],
+        [{
+            "location": "body",
+            "name": "mainProcurementCategory",
+            "description": ["Value must be one of ['goods', 'services', 'works']."]
+        }]
+    )
+
+    # test success creation
+    data["mainProcurementCategory"] = "goods"
+    response = self.app.post_json('/tenders', {'data': data})
+    self.assertEqual(response.status, '201 Created')
+    self.assertIn('mainProcurementCategory', response.json['data'])
+    self.assertEqual(response.json['data']['mainProcurementCategory'], "goods")
+
+    tender = response.json['data']
+    token = response.json['access']['token']
+    self.tender_id = tender['id']
+
+    # test success update tender in active.enquiries status
+    response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], token),
+                                   {'data': {'mainProcurementCategory': "services"}})
+    self.assertEqual(response.status, '200 OK')
+    self.assertIn('mainProcurementCategory', response.json['data'])
+    self.assertEqual(response.json['data']['mainProcurementCategory'], "services")
+
+    # test fail update mainProcurementCategory in active.tendering status
+    self.set_status('active.tendering')
+    response = self.app.patch_json('/tenders/{}?acc_token={}'.format(tender['id'], token),
+                                   {'data': {'mainProcurementCategory': "works"}})
+    self.assertEqual(response.status, '200 OK')
+    self.assertNotEqual(response.json['data']['mainProcurementCategory'], "works")
+    self.assertEqual(response.json['data']['mainProcurementCategory'], "services")
