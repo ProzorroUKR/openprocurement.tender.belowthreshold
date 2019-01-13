@@ -84,7 +84,11 @@ def create_tender_bid_invalid(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': [{u'contactPoint': [u'This field is required.'], u'identifier': {u'scheme': [u'This field is required.'], u'id': [u'This field is required.']}, u'name': [u'This field is required.'], u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
+        {u'description': [{u'contactPoint': [u'This field is required.'],
+                           u'identifier': {u'scheme': [u'This field is required.'],
+                                           u'id': [u'This field is required.']},
+                           u'name': [u'This field is required.'],
+                           u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
     ])
 
     response = self.app.post_json(request_path, {'data': {'tenderers': [{
@@ -93,7 +97,21 @@ def create_tender_bid_invalid(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': [{u'contactPoint': [u'This field is required.'], u'identifier': {u'scheme': [u'This field is required.'], u'id': [u'This field is required.'], u'uri': [u'Not a well formed URL.']}, u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
+        {u'description': [{u'contactPoint': [u'This field is required.'],
+                           u'identifier': {u'scheme': [u'This field is required.'],
+                                           u'id': [u'This field is required.'],
+                                           u'uri': [u'Not a well formed URL.']},
+                           u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
+    ])
+
+    test_organization_no_scale = deepcopy(test_organization)
+    del test_organization_no_scale['scale']
+    response = self.app.post_json(request_path, {'data': {'tenderers': [test_organization_no_scale], "value": {"amount": 500}}}, status=422)
+    self.assertEqual(response.status, '422 Unprocessable Entity')
+    self.assertEqual(response.content_type, 'application/json')
+    self.assertEqual(response.json['status'], 'error')
+    self.assertEqual(response.json['errors'], [
+        {u'description': [{u'scale': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
     ])
 
     response = self.app.post_json(request_path, {'data': {'tenderers': [test_organization]}}, status=422)
