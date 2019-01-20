@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+from copy import deepcopy
+from datetime import timedelta
+
+import mock
+from openprocurement.api.utils import get_now
 from openprocurement.tender.belowthreshold.tests.base import (
     test_organization
 )
@@ -100,6 +105,35 @@ def create_tender_award_invalid(self):
     self.assertEqual(response.json['errors'], [
         {u'description': [u'lotID should be one of lots'], u'location': u'body', u'name': u'lotID'}
     ])
+
+    test_organization_no_scale = deepcopy(test_organization)
+    del test_organization_no_scale['scale']
+    response = self.app.post_json(request_path, {'data': {
+        'suppliers': [test_organization_no_scale],
+        'status': 'pending',
+        'bid_id': self.initial_bids[0]['id']
+    }}, status=422)
+    self.assertEqual(response.status, '422 Unprocessable Entity')
+    self.assertEqual(response.content_type, 'application/json')
+    self.assertEqual(response.json['status'], 'error')
+    self.assertEqual(response.json['errors'], [
+        {u'description': [{u'scale': [u'This field is required.']}],
+         u'location': u'body', u'name': u'suppliers'}
+    ])
+
+    with mock.patch('openprocurement.api.models.ORGANIZATION_SCALE_FROM', get_now() + timedelta(days=1)):
+        response = self.app.post_json(request_path, {'data': {
+            'suppliers': [test_organization],
+            'status': 'pending',
+            'bid_id': self.initial_bids[0]['id']
+        }}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': [{u'scale': [u'Rogue field']}],
+             u'location': u'body', u'name': u'suppliers'}
+        ])
 
     response = self.app.post_json('/tenders/some_id/awards', {'data': {
                                   'suppliers': [test_organization], 'bid_id': self.initial_bids[0]['id']}}, status=404)

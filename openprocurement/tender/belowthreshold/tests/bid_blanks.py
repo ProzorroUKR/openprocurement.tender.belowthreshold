@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
+
+import mock
+from datetime import timedelta
+
+from openprocurement.api.utils import get_now
 from openprocurement.tender.belowthreshold.tests.base import (
     test_organization
 )
@@ -106,13 +111,30 @@ def create_tender_bid_invalid(self):
 
     test_organization_no_scale = deepcopy(test_organization)
     del test_organization_no_scale['scale']
-    response = self.app.post_json(request_path, {'data': {'tenderers': [test_organization_no_scale], "value": {"amount": 500}}}, status=422)
+    response = self.app.post_json(request_path, {'data': {
+        "tenderers": [test_organization_no_scale],
+        "value": {"amount": 500}}}, status=422)
     self.assertEqual(response.status, '422 Unprocessable Entity')
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': [{u'scale': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
+        {u'description': [{u'scale': [u'This field is required.']}],
+         u'location': u'body',
+         u'name': u'tenderers'}
     ])
+
+    with mock.patch('openprocurement.api.models.ORGANIZATION_SCALE_FROM', get_now() + timedelta(days=1)):
+        response = self.app.post_json(request_path, {'data': {
+            "tenderers": [test_organization],
+            "value": {"amount": 500}}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': [{u'scale': [u'Rogue field']}],
+             u'location': u'body',
+             u'name': u'tenderers'}
+        ])
 
     response = self.app.post_json(request_path, {'data': {'tenderers': [test_organization]}}, status=422)
     self.assertEqual(response.status, '422 Unprocessable Entity')
