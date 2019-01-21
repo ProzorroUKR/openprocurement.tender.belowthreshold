@@ -38,7 +38,8 @@ bid = {
                     "id": u"00137256",
                     "uri": u"http://www.sc.gov.ua/"
                 },
-                "name": "ДКП «Школяр»"
+                "name": "ДКП «Школяр»",
+                "scale": "micro"
             }
         ],
         "status": "draft",
@@ -69,7 +70,8 @@ bid2 = {
                     "id": u"00137226",
                     "uri": u"http://www.sc.gov.ua/"
                 },
-                "name": "ДКП «Книга»"
+                "name": "ДКП «Книга»",
+                "scale": "micro"
             }
         ],
         "value": {
@@ -113,7 +115,8 @@ question = {
                 "scheme": "UA-EDR",
                 "uri": "http://sch10.edu.vn.ua/"
             },
-            "name": "ДКП «Школяр»"
+            "name": "ДКП «Школяр»",
+            "scale": "micro"
         },
         "description": "Просимо додати таблицю потрібної калорійності харчування",
         "title": "Калорійність"
