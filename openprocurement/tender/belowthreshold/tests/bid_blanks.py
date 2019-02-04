@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
 
-import mock
 from datetime import timedelta
+from freezegun import freeze_time
 
 from openprocurement.api.utils import get_now
 from openprocurement.tender.belowthreshold.tests.base import (
@@ -89,11 +89,7 @@ def create_tender_bid_invalid(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': [{u'contactPoint': [u'This field is required.'],
-                           u'identifier': {u'scheme': [u'This field is required.'],
-                                           u'id': [u'This field is required.']},
-                           u'name': [u'This field is required.'],
-                           u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
+        {u'description': [{u'contactPoint': [u'This field is required.'], u'identifier': {u'scheme': [u'This field is required.'], u'id': [u'This field is required.']}, u'name': [u'This field is required.'], u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
     ])
 
     response = self.app.post_json(request_path, {'data': {'tenderers': [{
@@ -102,18 +98,12 @@ def create_tender_bid_invalid(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': [{u'contactPoint': [u'This field is required.'],
-                           u'identifier': {u'scheme': [u'This field is required.'],
-                                           u'id': [u'This field is required.'],
-                                           u'uri': [u'Not a well formed URL.']},
-                           u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
+        {u'description': [{u'contactPoint': [u'This field is required.'], u'identifier': {u'scheme': [u'This field is required.'], u'id': [u'This field is required.'], u'uri': [u'Not a well formed URL.']}, u'address': [u'This field is required.']}], u'location': u'body', u'name': u'tenderers'}
     ])
 
-    test_organization_no_scale = deepcopy(test_organization)
-    del test_organization_no_scale['scale']
     response = self.app.post_json(request_path, {'data': {
-        "tenderers": [test_organization_no_scale],
-        "value": {"amount": 500}}}, status=422)
+        'tenderers': [{k: v for k, v in test_organization.iteritems() if k != 'scale'}],
+        'value': {'amount': 500}}}, status=422)
     self.assertEqual(response.status, '422 Unprocessable Entity')
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
@@ -122,19 +112,6 @@ def create_tender_bid_invalid(self):
          u'location': u'body',
          u'name': u'tenderers'}
     ])
-
-    with mock.patch('openprocurement.api.models.ORGANIZATION_SCALE_FROM', get_now() + timedelta(days=1)):
-        response = self.app.post_json(request_path, {'data': {
-            "tenderers": [test_organization],
-            "value": {"amount": 500}}}, status=422)
-        self.assertEqual(response.status, '422 Unprocessable Entity')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['status'], 'error')
-        self.assertEqual(response.json['errors'], [
-            {u'description': [{u'scale': [u'Rogue field']}],
-             u'location': u'body',
-             u'name': u'tenderers'}
-        ])
 
     response = self.app.post_json(request_path, {'data': {'tenderers': [test_organization]}}, status=422)
     self.assertEqual(response.status, '422 Unprocessable Entity')
@@ -401,6 +378,42 @@ def bid_Administrator_change(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertNotEqual(response.json['data']["value"]["amount"], 400)
     self.assertEqual(response.json['data']["tenderers"][0]["identifier"]["id"], "00000000")
+
+
+# TenderBidResourceBeforeOrganizationScaleTest
+
+def create_tender_bid_with_scale_invalid(self):
+    request_path = '/tenders/{}/bids'.format(self.tender_id)
+    test_data = {'data': {
+        'tenderers': [test_organization],
+        'value': {'amount': 500}
+    }}
+    expected_errors = [{
+        u"location": u"body",
+        u"name": u"tenderers",
+        u"description": [{u"scale": [u"Rogue field"]}]
+    }]
+    for days in range(0, 2, 2):
+        with freeze_time(get_now() + timedelta(days=days)):
+            response = self.app.post_json(request_path, test_data, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], expected_errors)
+
+
+def create_tender_bid_with_no_scale(self):
+    request_path = '/tenders/{}/bids'.format(self.tender_id)
+    test_data = {'data': {
+        'tenderers': [{k: v for k, v in test_organization.iteritems() if k != 'scale'}],
+        'value': {'amount': 500}
+    }}
+    for days in range(0, 2, 2):
+        with freeze_time(get_now() + timedelta(days=days)):
+            response = self.app.post_json(request_path, test_data)
+        self.assertEqual(response.status, '201 Created')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertNotIn('scale', response.json['data']['tenderers'][0])
 
 
 # TenderBidFeaturesResourceTest

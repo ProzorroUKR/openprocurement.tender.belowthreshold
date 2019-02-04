@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+import mock
+from datetime import timedelta
+
 from openprocurement.api.tests.base import snitch
+from openprocurement.api.utils import get_now
 
 from openprocurement.tender.belowthreshold.tests.base import (
     TenderContentWebTest,
@@ -33,6 +37,9 @@ from openprocurement.tender.belowthreshold.tests.bid_blanks import (
     create_tender_bid_with_document_invalid,
     create_tender_bid_with_document,
     create_tender_bid_with_documents,
+    # TenderBidResourceBeforeOrganizationScaleTest
+    create_tender_bid_with_scale_invalid,
+    create_tender_bid_with_no_scale,
 )
 
 
@@ -46,6 +53,19 @@ class TenderBidResourceTest(TenderContentWebTest):
     test_delete_tender_bid = snitch(delete_tender_bid)
     test_get_tender_tenderers = snitch(get_tender_tenderers)
     test_bid_Administrator_change = snitch(bid_Administrator_change)
+
+
+class TenderBidResourceBeforeOrganizationScaleTest(TenderContentWebTest):
+    initial_status = 'active.tendering'
+
+    def setUp(self):
+        patcher = mock.patch('openprocurement.api.models.ORGANIZATION_SCALE_FROM', get_now() + timedelta(days=1))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        super(TenderBidResourceBeforeOrganizationScaleTest, self).setUp()
+
+    test_create_tender_bid_with_scale_invalid = snitch(create_tender_bid_with_scale_invalid)
+    test_create_tender_bid_with_no_scale = snitch(create_tender_bid_with_no_scale)
 
 
 class TenderBidFeaturesResourceTest(TenderContentWebTest):
