@@ -3,7 +3,6 @@ from copy import deepcopy
 from datetime import timedelta
 from freezegun import freeze_time
 
-import mock
 from openprocurement.api.utils import get_now
 from openprocurement.tender.belowthreshold.tests.base import (
     test_organization
