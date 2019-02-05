@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
 from datetime import timedelta
+from freezegun import freeze_time
 
 import mock
 from openprocurement.api.utils import get_now
@@ -120,20 +121,6 @@ def create_tender_award_invalid(self):
         {u'description': [{u'scale': [u'This field is required.']}],
          u'location': u'body', u'name': u'suppliers'}
     ])
-
-    with mock.patch('openprocurement.api.models.ORGANIZATION_SCALE_FROM', get_now() + timedelta(days=1)):
-        response = self.app.post_json(request_path, {'data': {
-            'suppliers': [test_organization],
-            'status': 'pending',
-            'bid_id': self.initial_bids[0]['id']
-        }}, status=422)
-        self.assertEqual(response.status, '422 Unprocessable Entity')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['status'], 'error')
-        self.assertEqual(response.json['errors'], [
-            {u'description': [{u'scale': [u'Rogue field']}],
-             u'location': u'body', u'name': u'suppliers'}
-        ])
 
     response = self.app.post_json('/tenders/some_id/awards', {'data': {
                                   'suppliers': [test_organization], 'bid_id': self.initial_bids[0]['id']}}, status=404)
@@ -421,6 +408,44 @@ def patch_tender_award_Administrator_change(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertIn("endDate", response.json['data']['complaintPeriod'])
     self.assertEqual(response.json['data']['complaintPeriod']["endDate"], complaintPeriod)
+
+
+# TenderAwardResourceBeforeOrganizationScaleTest
+
+def create_tender_award_with_scale_invalid(self):
+    request_path = '/tenders/{}/awards'.format(self.tender_id)
+    test_data = {'data': {
+        'suppliers': [test_organization],
+        'status': 'pending',
+        'bid_id': self.initial_bids[0]['id']
+    }}
+    expected_errors = [{
+        u"location": u"body",
+        u"name": u"suppliers",
+        u"description": [{u"scale": [u"Rogue field"]}]
+    }]
+    for days in range(0, 2, 2):
+        with freeze_time(get_now() + timedelta(days=days)):
+            response = self.app.post_json(request_path, test_data, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], expected_errors)
+
+
+def create_tender_award_with_no_scale(self):
+    request_path = '/tenders/{}/awards'.format(self.tender_id)
+    test_data = {'data': {
+        'suppliers': [{k: v for k, v in test_organization.iteritems() if k != 'scale'}],
+        'status': 'pending',
+        'bid_id': self.initial_bids[0]['id']
+    }}
+    for days in range(0, 2, 2):
+        with freeze_time(get_now() + timedelta(days=days)):
+            response = self.app.post_json(request_path, test_data)
+        self.assertEqual(response.status, '201 Created')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertNotIn('scale', response.json['data']['suppliers'][0])
 
 
 # TenderLotAwardResourceTest
